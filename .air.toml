@@ -6,10 +6,14 @@ root = "."
 tmp_dir = "_output/"
 
 [build]
+
+args_bin = ["-c", "configs/miniblog.yaml"]
 # Just plain old shell command. You could use `make` as well.
 cmd = "make build"
 # Binary file yields from `cmd`.
 bin = "_output/miniblog"
+
+full_bin = "APP_ENV=dev APP_USER=air ./_output/minilog"
 # Exclude unchanged files.
 exclude_unchanged = true
 # Follow symlink for directories
