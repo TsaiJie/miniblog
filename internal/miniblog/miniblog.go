@@ -6,12 +6,14 @@
 package miniblog
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/miniblog/internal/pkg/log"
 	"github.com/miniblog/pkg/version/verflag"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"net/http"
 )
 
 var cfgFile string
@@ -66,10 +68,34 @@ func NewMiniBlogCommand() *cobra.Command {
 
 // run 函数是实际的业务代码入口函数.
 func run() error {
-	// 打印所有的配置项及其值
-	settings, _ := json.Marshal(viper.AllSettings())
-	log.Infow(string(settings))
-	// 打印 db -> username 配置项的值
-	log.Infow(viper.GetString("db.username"))
+
+	// 设置gin的模式
+	gin.SetMode(viper.GetString("runmode"))
+
+	// 创建Gin引擎
+	g := gin.New()
+
+	// 注册404Handler
+	g.NoRoute(func(context *gin.Context) {
+		context.JSON(http.StatusOK, gin.H{"code": 10003, "message": "Page not found."})
+	})
+
+	// 注册/healthz handler
+	g.GET("/healthz", func(context *gin.Context) {
+		context.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
+	// 创建HTTP服务器
+	httpsrv := &http.Server{
+		Addr:    viper.GetString("addr"),
+		Handler: g,
+	}
+	// 运行HTTP服务器
+	// 打印一条日志，用来提示HTTP服务已经起来，方便排查
+	log.Infow("Start to listening the incoming requests on http address", "addr", viper.GetString("addr"))
+
+	if err := httpsrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Fatalw(err.Error())
+	}
 	return nil
 }
